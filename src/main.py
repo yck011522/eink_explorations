@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 import sys
 import os
-picdir = "/eink_explorations/pic"
+picdir = "/home/pi/eink_explorations/pic"
 libdir = "/e-Paper/RaspberryPi_JetsonNano/python/lib"
 if os.path.exists(libdir):
     sys.path.append(libdir)
@@ -23,8 +23,8 @@ try:
     epd.init()
     epd.Clear()
 
-    Himage = Image.open(os.path.join(picdir, 'jane_r.bmp'))
-    Himage_Other = Image.open(os.path.join(picdir, 'jane_b.bmp'))
+    Himage = Image.open(os.path.join(picdir, 'jane_b.bmp'))
+    Himage_Other = Image.open(os.path.join(picdir, 'jane_r.bmp'))
     epd.display(epd.getbuffer(Himage),epd.getbuffer(Himage_Other))
     time.sleep(2)
 
