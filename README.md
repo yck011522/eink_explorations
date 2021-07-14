@@ -3,12 +3,12 @@ Having some fun with waveshare 7.5inch e-ink panel and Raspberry Pi
 
 # Hardware
 
-## Raspberry Pi 3 Model B+
+## Raspberry Pi 3 Model B+ Revision03
 
 https://www.raspberrypi.org/products/raspberry-pi-3-model-b-plus/
 
 - Broadcom BCM2837B0, Cortex-A53 (ARMv8) 64-bit SoC @ 1.4GHz
-- 1GB LPDDR2 SDRAM
+- 1024MB LPDDR2 SDRAM
 - 2.4GHz and 5GHz IEEE 802.11.b/g/n/ac wireless LAN, Bluetooth 4.2, BLE
 - Full-size HDMI (Good for debug / dev monitor)
 - Power supply: +5 V @ 2.5 A via microUSB jack
@@ -23,11 +23,23 @@ https://www.raspberrypi.org/products/raspberry-pi-3-model-b-plus/
 
 ![raspberry_pi_model_b_plus_gpio](references/raspberry_pi_model_b_plus_gpio.png)
 
-### Installation guide:
+### RPi Installation guide:
 
 [Installing OS on RPi](https://projects.raspberrypi.org/en/projects/raspberry-pi-setting-up)
 
-[Keep RPi connected to WiFi](https://francisuniverse.wordpress.com/2018/01/07/how-to-automatically-reconnect-raspberry-pi-to-wifi/)
+[Setting up a Raspberry Pi WiFi headless](https://www.raspberrypi.org/documentation/configuration/wireless/headless.md) (`wpa_supplicant.conf` in boot)
+
+[Enabling SSH on Raspberry Pi Without a Screen](https://linuxize.com/post/how-to-enable-ssh-on-raspberry-pi/) (empty file named `ssh` in boot)
+
+[Using MMAP to find the RPi on same network](https://www.raspberrypi.org/documentation/remote-access/ip-address.md) (`nmap -sn 192.168.88.0/24`)
+
+Connect via SSH:  `ssh pi@192.168.88.63`
+
+The default user is **pi** , and the password is **raspberry** .
+
+[Keep RPi connected to WiFi](https://francisuniverse.wordpress.com/2018/01/07/how-to-automatically-reconnect-raspberry-pi-to-wifi/) (Following the second method by installing `ifplugd` )
+
+
 
 ## Waveshare 800 x 480 RBW tricolour 7.5 inch e-ink panel
 
@@ -43,9 +55,62 @@ https://www.raspberrypi.org/products/raspberry-pi-3-model-b-plus/
 - Greyscale 2
 - Refresh 16s
 
-## Dimension
+### Dimension
 
 ![7.5inch-e-Paper-B-details-size](references/7.5inch-e-Paper-B-details-size.jpg)
 
 ![e-Paper-Driver-HAT-details-size](references/e-Paper-Driver-HAT-details-size.jpg)
+
+### Guide
+
+[e-paper hat wiki](https://www.waveshare.com/wiki/7.5inch_e-Paper_HAT_(B))
+
+```
+wget http://www.airspayce.com/mikem/bcm2835/bcm2835-1.60.tar.gz
+tar zxvf bcm2835-1.60.tar.gz 
+cd bcm2835-1.60/
+sudo ./configure
+sudo make
+sudo make check
+sudo make install
+```
+
+```
+sudo apt-get install wiringpi
+cd /tmp
+wget https://project-downloads.drogon.net/wiringpi-latest.deb
+sudo dpkg -i wiringpi-latest.deb
+gpio -v
+```
+
+```
+#python3
+sudo apt-get update
+sudo apt-get install python3-pip
+sudo apt-get install python3-pil
+sudo apt-get install python3-numpy
+sudo pip3 install RPi.GPIO
+sudo pip3 install spidev
+sudo apt-get install git -y
+```
+
+```
+# Examples Python
+sudo git clone https://github.com/waveshare/e-Paper
+cd e-Paper/RaspberryPi\&JetsonNano/python/examples/
+sudo python3 epd_7in5b_V2_test.py
+
+```
+
+### Case Design
+
+RPi 3 B 3D Model
+
+https://grabcad.com/library/raspberry-pi-3-model-b-reference-design-solidworks-cad-raspberry-pi-raspberrypi-rpi-1
+
+# Software 
+
+## Functional Python Example File
+
+https://github.com/waveshare/e-Paper/blob/master/RaspberryPi_JetsonNano/python/examples/epd_7in5_V2_test.py
 
