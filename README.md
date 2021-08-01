@@ -35,9 +35,17 @@ https://www.raspberrypi.org/products/raspberry-pi-3-model-b-plus/
 
 Connect via SSH:  `ssh pi@192.168.88.63`
 
-The default user is **pi** , and the password is **raspberry** .
+The default user is **pi** , and the password is **~~raspberry~~** .
 
 [Keep RPi connected to WiFi](https://francisuniverse.wordpress.com/2018/01/07/how-to-automatically-reconnect-raspberry-pi-to-wifi/) (Following the second method by installing `ifplugd` )
+
+### Linux Commands
+
+List USB Devices: `lsusb `
+
+System Log: `dmesg`
+
+
 
 
 
@@ -61,7 +69,7 @@ The default user is **pi** , and the password is **raspberry** .
 
 ![e-Paper-Driver-HAT-details-size](references/e-Paper-Driver-HAT-details-size.jpg)
 
-### Guide
+### Library Setup Guide
 
 [e-paper hat wiki](https://www.waveshare.com/wiki/7.5inch_e-Paper_HAT_(B))
 
@@ -75,6 +83,8 @@ sudo make check
 sudo make install
 ```
 
+Install library for using Rpi GPIO
+
 ```
 sudo apt-get install wiringpi
 cd /tmp
@@ -82,6 +92,8 @@ wget https://project-downloads.drogon.net/wiringpi-latest.deb
 sudo dpkg -i wiringpi-latest.deb
 gpio -v
 ```
+
+Install Python Dependency and Git
 
 ```
 #python3
@@ -94,13 +106,38 @@ sudo pip3 install spidev
 sudo apt-get install git -y
 ```
 
+Update Pillow to latest version (Has more drawing effects)
+
+```
+python3 -m pip install --upgrade Pillow
+```
+
+Clone Waveshare Examples and E-Ink Library. 
+
+
+
 ```
 # Examples Python
 sudo git clone https://github.com/waveshare/e-Paper
-cd e-Paper/RaspberryPi\&JetsonNano/python/examples/
+
+cd /e-Paper/RaspberryPi_JetsonNano/python/examples/
 sudo python3 epd_7in5b_V2_test.py
+```
+
+The e-ink library at `/e-Paper/RaspberryPi_JetsonNano/python/lib`is not installed into the python path, but dynamically added to `sys.path` when the actual file is run:
 
 ```
+import os
+import sys
+libdir = "/e-Paper/RaspberryPi_JetsonNano/python/lib"
+if os.path.exists(libdir):
+    sys.path.append(libdir)
+from waveshare_epd import epd7in5b_V2
+```
+
+
+
+
 
 ### Case Design
 
@@ -110,7 +147,54 @@ https://grabcad.com/library/raspberry-pi-3-model-b-reference-design-solidworks-c
 
 # Software 
 
+## Coding and editing via VSCode
+
+[Guide for setting up VSCode to connect remotely to RPi](https://www.raspberrypi.org/blog/coding-on-raspberry-pi-remotely-with-visual-studio-code/) (Install **Remote Development** extension)
+
+[Workaround](https://stackoverflow.com/a/65156180/3199029) - Changing the repo folder for SSH read write permission for default account:``sudo setfacl -R -m u:pi:rwx ~/eink_explorations/ ``
+
 ## Functional Python Example File
 
 https://github.com/waveshare/e-Paper/blob/master/RaspberryPi_JetsonNano/python/examples/epd_7in5_V2_test.py
+
+Python file location
+
+```
+cd ~/eink_explorations/src/main.py
+```
+
+`waveshare_epd` Library location
+
+```
+```
+
+## Cron job
+
+Set up `main.py` in the repo to be [run as cron job](https://www.raspberrypi.org/documentation/linux/usage/cron.md) by entering `sudo crontab -e`
+
+The following line runs `main.py` on reboot and output `stdout` is routed to `log.txt`. 
+
+```
+@reboot sudo python3 /home/pi/eink_explorations/src/main.py > /home/pi/eink_explorations/log.txt
+```
+
+The following line runs the same file every 10 mins from hour 6 through 23:
+
+```
+0,59/10 6-23 * * * sudo python3 /home/pi/eink_explorations/src/main.py > /home/pi/eink_explorations/log.txt
+```
+
+Last run log can be seen in:
+
+```
+sudo nano ~/eink_explorations/log.txt
+```
+
+
+
+Boot log can be seen in:
+
+```
+grep cron /var/log/syslog
+```
 
