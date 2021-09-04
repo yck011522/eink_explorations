@@ -6,8 +6,8 @@ import os
 
 city_name = "Zurich, Switzerland"
 url = "http://dataservice.accuweather.com"
-cache_folder = "./cache"
-
+cache_folder = "../cache"
+api_key_filename = '../password.yml'
 # ##################################################################
 # The retrieve_* functions in this file have implemented file
 # cacheing. The retrived json data are stored in the cache folders.
@@ -22,7 +22,9 @@ def getJSONfromUrl(url):
 
 
 def retrieve_api_key():
-    with open('./password.yml') as stream:
+    here = os.path.realpath(__file__)
+    path = os.path.realpath(os.path.join(os.path.dirname(here), api_key_filename))
+    with open(path) as stream:
         config = yaml.safe_load(stream)
         api_key = config['accuweather']['api_key']
         return api_key
@@ -30,7 +32,9 @@ def retrieve_api_key():
 
 def get_cache(filename):
     # Load json from file if exist
-    folder_path = os.path.abspath(cache_folder)
+    here = os.path.realpath(__file__)
+    folder_path = os.path.realpath(os.path.join(os.path.dirname(here), cache_folder))
+    # folder_path = os.path.abspath(cache_folder)
     file_path = os.path.join(folder_path, filename)
     if os.path.exists(file_path):
         with open(file_path) as stream:
@@ -43,7 +47,10 @@ def get_cache(filename):
 
 def save_cache(filename, cache):
     # Create folder if it doesn exist
-    folder_path = os.path.abspath(cache_folder)
+    here = os.path.realpath(__file__)
+    folder_path = os.path.realpath(os.path.join(os.path.dirname(here), cache_folder))
+
+    # folder_path = os.path.abspath(cache_folder)
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
 
@@ -151,7 +158,7 @@ def retrieve_weather_24h_history(api_key, location_key):
         return weather
 
 
-def retrieve_all_weather():
+def retrieve_all_weather(state):
     """
     Manages all call to AccuWeather
 
@@ -175,11 +182,12 @@ def retrieve_all_weather():
         'weather_5d_forecast': weather_5d_forecast,
         'weather_12h_forecast': weather_12h_forecast,
     }
+    state.update(all_weather)
     return all_weather
 
 
 def print_weather_summary():
-    weather = retrieve_all_weather()
+    weather = retrieve_all_weather({})
 
     # Printing Historial Data
     print("Hourly Historic: ")
