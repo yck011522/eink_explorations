@@ -1,5 +1,6 @@
 *.3dmbak
 log.txt
 keyboard_log.txt
-password.txt
 log.txt
+password.yml
+cache/*.json
