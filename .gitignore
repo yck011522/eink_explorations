@@ -4,3 +4,4 @@ keyboard_log.txt
 log.txt
 password.yml
 cache/*.json
+*__pycache__*

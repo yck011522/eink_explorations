@@ -8,6 +8,12 @@ city_name = "Zurich, Switzerland"
 url = "http://dataservice.accuweather.com"
 cache_folder = "./cache"
 
+# ##################################################################
+# The retrieve_* functions in this file have implemented file
+# cacheing. The retrived json data are stored in the cache folders.
+# get_cache() and save_cache() function assisted this.
+# ##################################################################
+
 
 def getJSONfromUrl(url):
     response = requests.get(url)
@@ -52,7 +58,7 @@ def save_cache(filename, cache):
 def retrieve_location_key(api_key):
     """Location key is how Accuweather reference a location."""
     cache_filename = "location_key.json"
-    cache_expiry = timedelta(days = 2)
+    cache_expiry = timedelta(days=2)
 
     cache = get_cache(cache_filename)
     if cache is None or datetime.fromisoformat(cache['retrival_time']) - datetime.now() > cache_expiry:
@@ -78,7 +84,7 @@ def retrieve_weather_12h_forecast(api_key, location_key):
     cache_expiry = timedelta(minutes=57)
 
     cache = get_cache(cache_filename)
-    if cache is None or datetime.fromisoformat(cache['retrival_time']) - datetime.now() > cache_expiry:
+    if cache is None or datetime.now() - datetime.fromisoformat(cache['retrival_time']) > cache_expiry:
         # Retrive new weather
         request = "/forecasts/v1/hourly/12hour/" + location_key + "?apikey=" + api_key + "&metric=true"
         weather = getJSONfromUrl(url + request)
@@ -102,7 +108,7 @@ def retrieve_weather_5d_forecast(api_key, location_key):
     cache_expiry = timedelta(hours=5, minutes=57)
 
     cache = get_cache(cache_filename)
-    if cache is None or datetime.fromisoformat(cache['retrival_time']) - datetime.now() > cache_expiry:
+    if cache is None or datetime.now() - datetime.fromisoformat(cache['retrival_time']) > cache_expiry:
         # Retrive new weather
         request = "/forecasts/v1/daily/5day/" + location_key + "?apikey=" + api_key + "&details=true&metric=true"
         weather = getJSONfromUrl(url + request)
@@ -123,10 +129,10 @@ def retrieve_weather_5d_forecast(api_key, location_key):
 
 def retrieve_weather_24h_history(api_key, location_key):
     cache_filename = "weather_24h_history.json"
-    cache_expiry = timedelta(minutes=57)
+    cache_expiry = timedelta(hours=1, minutes=57)
 
     cache = get_cache(cache_filename)
-    if cache is None or datetime.fromisoformat(cache['retrival_time']) - datetime.now() > cache_expiry:
+    if cache is None or datetime.now() - datetime.fromisoformat(cache['retrival_time']) > cache_expiry:
         # Retrive new weather
         request = "/currentconditions/v1/" + location_key + "/historical/24?apikey=" + api_key + "&details=true"
         weather = getJSONfromUrl(url + request)
@@ -145,18 +151,68 @@ def retrieve_weather_24h_history(api_key, location_key):
         return weather
 
 
-api_key = retrieve_api_key()
-location_key = retrieve_location_key(api_key)
-weather_24h_history = retrieve_weather_24h_history(api_key, location_key)
-weather_5d_forecast = retrieve_weather_5d_forecast(api_key, location_key)
-weather_12h_forecast = retrieve_weather_12h_forecast(api_key, location_key)
+def retrieve_all_weather():
+    """
+    Manages all call to AccuWeather
+
+    Free Trial 50 calls/day
+    -----------------------
+
+    - retrieve_location_key : Update freq every 2 days (1 time a day max)
+    - weather_24h_history : Update freq every 2 hours (12 times a day)
+    - weather_5d_forecast : Update freq every 6 hours (4 times a day)
+    - weather_12h_forecast : Update freq every 1 hours (24 times a day)
+    Total: ~ 41 Calls
+    """
+    api_key = retrieve_api_key()
+    location_key = retrieve_location_key(api_key)
+
+    weather_24h_history = retrieve_weather_24h_history(api_key, location_key)
+    weather_5d_forecast = retrieve_weather_5d_forecast(api_key, location_key)
+    weather_12h_forecast = retrieve_weather_12h_forecast(api_key, location_key)
+    all_weather = {
+        'weather_24h_history': weather_24h_history,
+        'weather_5d_forecast': weather_5d_forecast,
+        'weather_12h_forecast': weather_12h_forecast,
+    }
+    return all_weather
 
 
-for hour_forcast in weather_12h_forecast:
-    d = datetime.fromtimestamp(hour_forcast['EpochDateTime'])
+def print_weather_summary():
+    weather = retrieve_all_weather()
 
-    print("%s : %s%s" % (
-        d.strftime("%H:%M"),
-        hour_forcast['Temperature']['Value'],
-        hour_forcast['Temperature']['Unit'])
-    )
+    # Printing Historial Data
+    print("Hourly Historic: ")
+    for observation in weather['weather_24h_history']:
+        d = datetime.fromtimestamp(observation['EpochTime'])
+        print("%s : %s%s" % (
+            d.strftime("%a %H:%M"),
+            observation['Temperature']['Metric']['Value'],
+            observation['Temperature']['Metric']['Unit']
+        ))
+
+    # Printing Hourly Forecast
+    print("Hourly Forecast: ")
+    for observation in weather['weather_12h_forecast']:
+        d = datetime.fromtimestamp(observation['EpochDateTime'])
+        print("%s : %s%s" % (
+            d.strftime("%a %H:%M"),
+            observation['Temperature']['Value'],
+            observation['Temperature']['Unit']
+        ))
+
+    # 5 Day Forecast
+    print("Daily Forecast: ")
+    for observation in weather['weather_5d_forecast']['DailyForecasts']:
+        d = datetime.fromtimestamp(observation['EpochDate'])
+        print("%s : %s%s to %s%s" % (
+            d.strftime("%a %H:%M"),
+            observation['Temperature']['Minimum']['Value'],
+            observation['Temperature']['Minimum']['Unit'],
+            observation['Temperature']['Maximum']['Value'],
+            observation['Temperature']['Maximum']['Unit'],
+        ))
+
+
+if __name__ == "__main__":
+    print_weather_summary()
