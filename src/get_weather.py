@@ -93,7 +93,7 @@ def retrieve_weather_12h_forecast(api_key, location_key):
     cache = get_cache(cache_filename)
     if cache is None or datetime.now() - datetime.fromisoformat(cache['retrival_time']) > cache_expiry:
         # Retrive new weather
-        request = "/forecasts/v1/hourly/12hour/" + location_key + "?apikey=" + api_key + "&metric=true"
+        request = "/forecasts/v1/hourly/12hour/" + location_key + "?apikey=" + api_key + "&details=true&metric=true"
         weather = getJSONfromUrl(url + request)
         print("New weather_12h_forecast retrived")
 
@@ -177,13 +177,48 @@ def retrieve_all_weather(state):
     weather_24h_history = retrieve_weather_24h_history(api_key, location_key)
     weather_5d_forecast = retrieve_weather_5d_forecast(api_key, location_key)
     weather_12h_forecast = retrieve_weather_12h_forecast(api_key, location_key)
+    daily_temp_plot = build_daily_temp_plot(weather_24h_history, weather_12h_forecast)
     all_weather = {
         'weather_24h_history': weather_24h_history,
         'weather_5d_forecast': weather_5d_forecast,
         'weather_12h_forecast': weather_12h_forecast,
+        'daily_temp_plot': daily_temp_plot
     }
     state.update(all_weather)
     return all_weather
+
+
+def build_daily_temp_plot(weather_24h_history, weather_12h_forecast):
+    now = datetime.now()
+    compile_date_string = now.strftime('%Y-%m-%d')
+    cache_filename = "plot_daily_temp_%s.json" % compile_date_string
+    cache = get_cache(cache_filename)
+    # Create a empty storage dictionary structure
+    if cache is None:
+        cache = {}
+        for i in range(24):
+            cache[str(i)] = {'historic': None, 'forecast': None}
+    # Date for the current plot
+
+    cache['compile_date'] = compile_date_string
+    cache['compile_epoch'] = int(now.timestamp())
+
+    # Updating cells in the cache
+    for observation in weather_24h_history:
+        d = datetime.fromtimestamp(observation['EpochTime'])
+        if (d + timedelta(minutes=5)).date() != now.date():
+            continue
+        rounded_hour = (d + timedelta(minutes=30)).hour
+        cache[str(rounded_hour)]['historic'] = observation['Temperature']['Metric']['Value']
+    for observation in weather_12h_forecast:
+        d = datetime.fromtimestamp(observation['EpochDateTime'])
+        if (d - timedelta(minutes=5)).date() != now.date():
+            continue
+        rounded_hour = (d + timedelta(minutes=30)).hour
+        cache[str(rounded_hour)]['forecast'] = observation['Temperature']['Value']
+
+    save_cache(cache_filename, cache)
+    return cache
 
 
 def print_weather_summary():
@@ -193,20 +228,25 @@ def print_weather_summary():
     print("Hourly Historic: ")
     for observation in weather['weather_24h_history']:
         d = datetime.fromtimestamp(observation['EpochTime'])
-        print("%s : %s%s" % (
+        print("%s : %s%s prec: %s%s" % (
             d.strftime("%a %H:%M"),
             observation['Temperature']['Metric']['Value'],
-            observation['Temperature']['Metric']['Unit']
+            observation['Temperature']['Metric']['Unit'],
+            observation['Precip1hr']['Metric']['Value'],
+            observation['Precip1hr']['Metric']['Unit'],
         ))
 
     # Printing Hourly Forecast
     print("Hourly Forecast: ")
     for observation in weather['weather_12h_forecast']:
         d = datetime.fromtimestamp(observation['EpochDateTime'])
-        print("%s : %s%s" % (
+        print("%s : %s%s prec: %s%s (%s%%)" % (
             d.strftime("%a %H:%M"),
             observation['Temperature']['Value'],
-            observation['Temperature']['Unit']
+            observation['Temperature']['Unit'],
+            observation['TotalLiquid']['Value'],
+            observation['TotalLiquid']['Unit'],
+            observation['PrecipitationProbability'],
         ))
 
     # 5 Day Forecast
