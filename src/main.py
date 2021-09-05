@@ -1,7 +1,7 @@
 from datetime import datetime
 from get_weather import retrieve_all_weather
 from draw_display import draw_and_update_display
-
+import traceback
 
 def try_run_print_log(state, function, function_description=None):
     if function_description is None:
@@ -15,8 +15,9 @@ def try_run_print_log(state, function, function_description=None):
         print("%s Finished on %s" % (function_description, datetime.now().strftime('%Y-%m-%d (%a) %H:%M:%S'),))
     except Exception as exception:
         # Output unexpected Exceptions.
-        print(exception, False)
-        print(exception.__class__.__name__ + ": " + exception.message)
+        print(exception)
+        print(exception.__class__.__name__)
+        traceback.print_exc()
         print("%s Failed on %s" % (function_description, datetime.now().strftime('%Y-%m-%d (%a) %H:%M:%S'),))
 
 
