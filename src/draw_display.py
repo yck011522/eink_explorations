@@ -9,7 +9,7 @@ from datetime import datetime
 from math import ceil, floor
 
 import PIL
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageChops
 
 picdir = "/home/pi/eink_explorations/pic"
 fontdir = "/home/pi/eink_explorations/font"
@@ -99,8 +99,8 @@ def draw_time_of_day(eink):
     x1, y1, x2, y2 = bar_rec
     eink['draw_blk'].rectangle(offset(bar_rec, 8), fill=0)
     eink['draw_red'].rectangle(set_x(offset(bar_rec, 8), 108, 306), fill=0)
-    eink['draw_blk'].rectangle(offset(bar_rec, 4), fill=1)
-    eink['draw_red'].rectangle(offset(bar_rec, 4), fill=1)
+    eink['draw_blk'].rectangle(offset(bar_rec, 4), fill=255)
+    eink['draw_red'].rectangle(offset(bar_rec, 4), fill=255)
 
     # Progress bar constants
     starting_hour = 6
@@ -109,8 +109,8 @@ def draw_time_of_day(eink):
     # Labels
     for h in range(starting_hour, ending_hour + 1):
         x = x1 + (x2 - x1) / (ending_hour - starting_hour) * (h - starting_hour)
-        eink['draw_blk'].rectangle((x - 1, y1 - 8, x + 1, y2 + 8), fill=1)  # White
-        eink['draw_red'].rectangle((x - 1, y1 - 8, x + 1, y2 + 8), fill=1)  # White
+        eink['draw_blk'].rectangle((x - 1, y1 - 8, x + 1, y2 + 8), fill=255)  # White
+        eink['draw_red'].rectangle((x - 1, y1 - 8, x + 1, y2 + 8), fill=255)  # White
         if h % 3 == 0:
             eink['draw_blk'].text((x - 1, y2 + 10), str(h), font=font_base_12, anchor="mt", fill=0)
 
@@ -122,8 +122,8 @@ def draw_time_of_day(eink):
     hours_since_start = datetime.now().hour + datetime.now().minute / 60 - starting_hour
     current_width = max(0, width / (ending_hour - starting_hour) * hours_since_start)
     bar_negative = x1 + current_width, y1, x2, y2
-    eink['draw_blk'].rectangle(bar_negative, fill=1)
-    eink['draw_red'].rectangle(bar_negative, fill=1)
+    eink['draw_blk'].rectangle(bar_negative, fill=255)
+    eink['draw_red'].rectangle(bar_negative, fill=255)
     # for h in range(starting_hour, ending_hour, 3):
     #     x1 + (x2 - x1) / (ending_hour - starting_hour) * h
 
@@ -190,7 +190,7 @@ def draw_weather(eink, state):
     x1, y1, x2, y2 = bar_rec
     eink['draw_blk'].rectangle(offset(bar_rec, 8), fill=0)
     # eink['draw_red'].rectangle(set_x(offset(bar_rec, 8), 108, 306), fill=0)
-    eink['draw_blk'].rectangle(offset(bar_rec, 4), fill=1)
+    eink['draw_blk'].rectangle(offset(bar_rec, 4), fill=255)
     # eink['draw_red'].rectangle(offset(bar_rec, 4), fill=1)
 
     # Progress bar constants
@@ -213,6 +213,7 @@ def draw_weather(eink, state):
     temp_max = temp_max
 
     # Draw Temp Plots (Historic + Forecast)
+    plot_points = []
     for h in range(starting_hour, ending_hour):
         # Grap points / Skip through empty point
         if data[str(h)]['historic'] is not None:
@@ -226,57 +227,84 @@ def draw_weather(eink, state):
         x = x1 + (x2 - x1) / (ending_hour - starting_hour) * (h - starting_hour)
         y = y2 - (temp - floor(temp_min)) / (ceil(temp_max) - floor(temp_min)) * height
         rectangle = rec_mid(x, y, 3, 3)
+        plot_points.append((x, y))
         eink['draw_blk'].rectangle(rectangle, fill=0)
 
         # Draw minima maxima tag with a white box bg
-        padding = 8
+        tag_offset = 12
         if temp == temp_min:
-            rectangle = rec_mid(x, y-padding - 8, 40, 18)
-            eink['draw_blk'].rectangle(rectangle, fill=1)
-            eink['draw_blk'].text((x, y-padding), '%.1f' % temp_min, font=font_base_20, anchor="mb", fill=0)
+            rectangle = rec_mid(x, y-tag_offset - 8, 40, 18)
+            eink['draw_blk'].rectangle(rectangle, fill=255)
+            eink['draw_blk'].text((x, y-tag_offset), '%.1f' % temp_min, font=font_base_20, anchor="mb", fill=0)
         if temp == temp_max:
-            rectangle = rec_mid(x, y+padding + 8, 40, 18)
-            eink['draw_blk'].rectangle(rectangle, fill=1)
-            eink['draw_blk'].text((x, y+padding), '%.1f' % temp_max, font=font_base_20, anchor="mt", fill=0)
+            rectangle = rec_mid(x, y+tag_offset + 8, 40, 18)
+            eink['draw_blk'].rectangle(rectangle, fill=255)
+            eink['draw_blk'].text((x, y+tag_offset), '%.1f' % temp_max, font=font_base_20, anchor="mt", fill=0)
+
+    # Draw line
+    # for i in range (len(plot_points) - 1):
+    eink['draw_blk'].line(plot_points, width=1, fill=0)
 
     # Draw 5 Day forecast
     x_border = 40
     y = 410
-    for i, observation in enumerate(weather['weather_5d_forecast']['DailyForecasts']):
+    for i, observation in enumerate(state['weather_5d_forecast']['DailyForecasts']):
         if i > 4:
             break
+        # Drawing Date above Day of week
         x = x_border + (480 - (2*x_border)) / 10 * (i * 2 + 1)
         d = datetime.fromtimestamp(observation['EpochDate'])
         date_color = 'draw_red' if d.weekday() > 4 else 'draw_blk'
         eink[date_color].text((x, y), d.strftime("%d"), font=font_hel_28, anchor="mb", fill=0)
         eink[date_color].text((x, y+17), d.strftime("%a"), font=font_base_20, anchor="mb", fill=0)
-        # Temperature range
-        temp_string = "%.0f" % (
-            observation['Temperature']['Maximum']['Value'],
-        )
-        eink['draw_blk'].text((x, y+45), temp_string, font=font_hel_28, anchor="mb", fill=0)
-        temp_string = "%.0f" % (
-            observation['Temperature']['Minimum']['Value'],
-        )
-        eink['draw_blk'].text((x, y+77), temp_string, font=font_hel_28, anchor="mb", fill=0)
-        # Separator
-        rectangle = rec_mid(x, y+52, 40, 1)
-        eink['draw_blk'].rectangle(rectangle, fill=0)
 
-    eink['draw_blk'].text((480-x_border + 4, y+55), '\u00b0C', font=font_hel_28, anchor="mb", fill=0)
-    eink['draw_blk'].text((x_border, y+45), 'Hi', font=font_hel_20, anchor="rb", fill=0)
-    eink['draw_blk'].text((x_border, y+77), 'Lo', font=font_hel_20, anchor="rb", fill=0)
+        # Temperature range as text one above another
+        y1 = y + 50
+        temp_string = "%.0f" % (observation['Temperature']['Maximum']['Value'])
+        eink['draw_blk'].text((x, y1), temp_string, font=font_hel_28, anchor="mb", fill=0)
+        temp_string = "%.0f" % (observation['Temperature']['Minimum']['Value'])
+        eink['draw_blk'].text((x, y1+32), temp_string, font=font_hel_28, anchor="mb", fill=0)
+        # Hi Lo Temp Separator
+        eink['draw_blk'].rectangle(rec_mid(x, y1+7, 40, 1), fill=0)
 
+        # Rain mm and Precipitation Probability one above another
+        y2 = y + 120  # Reset Y position
+        eink['draw_blk'].text((x, y2), "%.0f" % (observation['Day']['TotalLiquid']['Value']), font=font_hel_28, anchor="mb", fill=0)
+        eink['draw_blk'].text((x, y2+32), "%.0f" % (observation['Day']['PrecipitationProbability']), font=font_hel_28, anchor="mb", fill=0)
+        # mm / percentage separator
+        eink['draw_blk'].rectangle(rec_mid(x, y2+7, 40, 1), fill=0)
+
+    # Border Legends and Units
+    eink['draw_blk'].text((480-x_border + 4, y1+10), '\u00b0C', font=font_hel_28, anchor="mb", fill=0)  # Right side
+    eink['draw_blk'].text((x_border+4, y1+0), 'Hi', font=font_hel_20, anchor="rb", fill=0)  # Left Side
+    eink['draw_blk'].text((x_border+4, y1+32), 'Lo', font=font_hel_20, anchor="rb", fill=0)  # Left Side
+    eink['draw_blk'].text((x_border+4, y2+17), 'Rain', font=font_hel_20, anchor="rb", fill=0)  # Left Side
+    eink['draw_blk'].text((480-x_border + 5, y2+0), 'mm', font=font_hel_20, anchor="mb", fill=0)  # Right side
+    eink['draw_blk'].text((480-x_border + 5, y2+30), '%', font=font_hel_28, anchor="mb", fill=0)  # Right side
+
+
+def flip_black_white(eink):
+    eink['image_blk'] = ImageChops.invert(eink['image_blk'])
 
 def draw_and_update_display(state):
     try:
+        # Create drawable PIL image
         eink = init_eink()
 
-        logging.info("Test to draw current date time on screen")
+        logging.info("Running: draw_time_of_day()")
         draw_time_of_day(eink)
 
         # draw_weather_old(eink, state)
+        logging.info("Running: draw_weather()")
         draw_weather(eink, state)
+
+        # Inverted Black Background mode for night time
+        if datetime.now().hour < 6:
+            logging.info("Running: flip_black_white()")
+            flip_black_white(eink)
+
+        # Draw image to the screen.
+        logging.info("Running: finalize_eink()")
         finalize_eink(eink)
 
     except IOError as e:
@@ -289,6 +317,8 @@ def draw_and_update_display(state):
 
 
 if __name__ == "__main__":
+    # Testing routine to skip running the functions from main.py where it is wrapped with a try block.
     from get_weather import retrieve_all_weather
-    weather = retrieve_all_weather({})
-    draw_and_update_display(weather)
+    state = {}
+    retrieve_all_weather(state)
+    draw_and_update_display(state)
