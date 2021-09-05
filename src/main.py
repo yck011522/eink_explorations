@@ -24,7 +24,7 @@ if __name__ == "__main__":
     state = {}
     current_hour = datetime.now().hour
     # Opeartion time by hours of day
-    if current_hour > 0 or current_hour < 6:
+    if current_hour > 0 and current_hour < 6:
         print("-------------------")
         print(" Current time is outside operaation time: %s" % datetime.now().strftime('%Y-%m-%d (%a) %H:%M:%S'))
         print("Good night.")
