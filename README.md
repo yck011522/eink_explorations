@@ -31,6 +31,8 @@ https://www.raspberrypi.org/products/raspberry-pi-3-model-b-plus/
 
 [Enabling SSH on Raspberry Pi Without a Screen](https://linuxize.com/post/how-to-enable-ssh-on-raspberry-pi/) (empty file named `ssh` in boot)
 
+### Finding RPi in Network
+
 [Using MMAP to find the RPi on same network](https://www.raspberrypi.org/documentation/remote-access/ip-address.md) (`nmap -sn 192.168.88.0/24`)
 
 Connect via SSH:  `ssh pi@192.168.88.63`
@@ -38,6 +40,30 @@ Connect via SSH:  `ssh pi@192.168.88.63`
 The default user is **pi** , and the password is **~~raspberry~~** .
 
 [Keep RPi connected to WiFi](https://francisuniverse.wordpress.com/2018/01/07/how-to-automatically-reconnect-raspberry-pi-to-wifi/) (Following the second method by installing `ifplugd` )
+
+```
+sudo nano /etc/wpa_supplicant/wpa_supplicant.conf
+```
+
+In the following format:
+
+```
+network={
+    ssid="HomeOneSSID"
+    psk="passwordOne"
+    priority=1
+    id_str="homeOne"
+}
+
+network={
+    ssid="HomeTwoSSID"
+    psk="passwordTwo"
+    priority=2
+    id_str="homeTwo"
+}
+```
+
+
 
 ### Linux Commands
 
@@ -114,8 +140,6 @@ python3 -m pip install --upgrade Pillow
 
 Clone Waveshare Examples and E-Ink Library. 
 
-
-
 ```
 # Examples Python
 sudo git clone https://github.com/waveshare/e-Paper
@@ -134,10 +158,6 @@ if os.path.exists(libdir):
     sys.path.append(libdir)
 from waveshare_epd import epd7in5b_V2
 ```
-
-
-
-
 
 ### Case Design
 
@@ -168,33 +188,62 @@ cd ~/eink_explorations/src/main.py
 ```
 ```
 
-## Cron job
+## Task Scheduling
 
-Set up `main.py` in the repo to be [run as cron job](https://www.raspberrypi.org/documentation/linux/usage/cron.md) by entering `sudo crontab -e`
+In order to minimize changes to the system configuration as I add more features. All the regularly updated routines are called by `main.py` in the repo which is triggered to [run by cron job](https://www.raspberrypi.org/documentation/linux/usage/cron.md) in a regular 10 minute interval. Actual routines may have a different update frequency (less than the cron frequency) and are managed by `main.py`. These tasks manages its own run / skip with their own logic:
+
+- Fetching weather from online sources (Last successful data fetch > expiry time)
+- Drawing and Updating eink display (Within a certain time of the day)
+
+## Cron Setup
+
+The cron setting file is done on the user 'pi' (no `sudo` permissions granted):
+
+````
+crontab -e
+````
 
 The following line runs `main.py` on reboot and output `stdout` is routed to `log.txt`. 
 
 ```
-@reboot sudo python3 /home/pi/eink_explorations/src/main.py > /home/pi/eink_explorations/log.txt
+@reboot python3 /home/pi/eink_explorations/src/main.py > /home/pi/eink_explorations/log.txt
 ```
 
-The following line runs the same file every 10 mins from hour 6 through 23:
+The following line runs the same file every 10 mins
 
 ```
-0,59/10 6-23 * * * sudo python3 /home/pi/eink_explorations/src/main.py > /home/pi/eink_explorations/log.txt
+0,59/10 * * * * python3 /home/pi/eink_explorations/src/main.py > /home/pi/eink_explorations/log.txt
 ```
 
 Last run log can be seen in:
 
 ```
-sudo nano ~/eink_explorations/log.txt
+nano ~/eink_explorations/log.txt
 ```
-
-
 
 Boot log can be seen in:
 
 ```
 grep cron /var/log/syslog
+```
+
+# Interfacing with Arduino via USB
+
+https://roboticsbackend.com/raspberry-pi-arduino-serial-communication/#Detect_the_Arduino_board
+
+```
+python3 -m pip install pyserial
+```
+
+
+
+# Reading Weather (AccuWeather API)
+
+api key is written in ymal file
+
+Install ymal for python
+
+```
+python3 -m pip install  pyyaml
 ```
 
